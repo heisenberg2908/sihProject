@@ -1,9 +1,10 @@
 # crypto_integration.py
 import pandas as pd
 from hashlib import sha256
+from ecdsa import SigningKey, SECP256k1
 
 # Load the reports from the CSV file created in the last step
-df = pd.read_csv('simulated_reports.csv')
+df = pd.read_csv('../simulated_reports.csv')
 
 print("Adding cryptographic hash and signature placeholders...")
 hashes = []
@@ -21,15 +22,17 @@ for index, row in df.iterrows():
     # 2. Add a placeholder for the signature.
     # M2 will provide the real signing logic later.
     # This is just a correctly formatted placeholder.
-    signature = '0x' + ('a' * 130) 
-    signatures.append(signature)
+    sk = SigningKey.generate(curve=SECP256k1)  # added rng sign key
+    # signature = '0x' + ('a' * 130) 
+    signature=sk.sign(report_hash.encode())
+    signatures.append(signature.hex())
 
 # Add the new columns to our data
 df['hash'] = hashes
 df['signature'] = signatures
 
 # Save the cryptographically prepared data to a new file
-df.to_csv('prepared_reports.csv', index=False)
+df.to_csv('../prepared_reports.csv', index=False)
 
 print("✅ Successfully added hashes and signatures.")
 print("\n--- Sample of Prepared Data ---")
