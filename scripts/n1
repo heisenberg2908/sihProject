@@ -71,7 +71,6 @@ contract CropInsurance {
      * @param _farmerID Farmer’s ID
      * @param _eventCode Weather event code
      * @param _signature Off-chain signature proving authenticity
-     * @param _messageHash
      */
     function submitReport(
         uint256 _farmerID,
