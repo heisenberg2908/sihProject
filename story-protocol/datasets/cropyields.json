@@ -1,0 +1,5 @@
+[
+  { "crop": "rice", "yield_tonnes": 120 },
+  { "crop": "wheat", "yield_tonnes": 95 },
+  { "crop": "maize", "yield_tonnes": 80 }
+]

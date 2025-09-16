@@ -1,0 +1,15 @@
+{
+  "name": "crop-insurance-final",
+  "version": "1.0.0",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.5"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
+    "@story-protocol/core-sdk": "latest",
+    "dotenv": "^16.4.5",
+    "viem": "2.9.31"
+  
+  }
+}
