@@ -1,0 +1,166 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+/**
+ * @title CropInsurance
+ * @notice A simple decentralized crop insurance contract
+ *         - Farmers register (Step 1)
+ *         - Weather event reports submitted (Step 2)
+ *         - Admin approves claims if reports cross threshold (Step 3)
+ *         - Farmers redeem claim payouts (Step 4)
+ */
+contract CropInsurance {
+    // ============================================================
+    // ====================== STEP 1 ==============================
+    // Farmer Registration
+    // ============================================================
+
+    struct Farmer {
+        uint256 id;
+        address farmerAddress;
+        bool isRegistered;
+    }
+
+    mapping(uint256 => Farmer) public farmers; // farmerID => Farmer
+    uint256 public farmerCount; // total number of farmers
+
+    // Only admin can perform certain actions (like approving claims)
+    address public admin;
+
+    // Events for farmer registration
+    event FarmerRegistered(uint256 farmerID, address farmerAddress);
+
+    constructor() {
+        admin = msg.sender; // deployer is admin
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can call this");
+        _;
+    }
+
+    /**
+     * @notice Register a new farmer
+     * @param _farmerAddress The wallet address of the farmer
+     */
+    function registerFarmer(address _farmerAddress) public onlyAdmin {
+        farmerCount++;
+        farmers[farmerCount] = Farmer(farmerCount, _farmerAddress, true);
+
+        emit FarmerRegistered(farmerCount, _farmerAddress);
+    }
+
+    // ============================================================
+    // ====================== STEP 2 ==============================
+    // Report Submission (Weather Events)
+    // ============================================================
+
+    struct Report {
+        uint256 farmerID;    // who submitted the report
+        uint8 eventCode;     // type of event (e.g. 1 = drought, 2 = flood, etc.)
+        uint256 timestamp;   // when the event occurred
+        bytes signature;     // farmer’s off-chain signature for authenticity
+    }
+
+    Report[] public reports;
+
+    event ReportSubmitted(uint256 farmerID, uint8 eventCode, uint256 timestamp);
+
+    /**
+     * @notice Farmer submits a weather event report
+     * @param _farmerID Farmer’s ID
+     * @param _eventCode Weather event code
+     * @param _signature Off-chain signature proving authenticity
+     * @param _messageHash
+     */
+    function submitReport(
+        uint256 _farmerID,
+        uint8 _eventCode,
+        bytes memory _signature
+    ) public {
+        require(farmers[_farmerID].isRegistered, "Farmer not registered");
+
+        // Store the report
+        reports.push(
+            Report(_farmerID, _eventCode, block.timestamp, _signature)
+        );
+
+        emit ReportSubmitted(_farmerID, _eventCode, block.timestamp);
+    }
+
+    // ============================================================
+    // ====================== STEP 3 ==============================
+    // Threshold-Based Claim Approval
+    // ============================================================
+
+    event ClaimApproved(uint8 eventCode, uint256 count);
+
+    /**
+     * @notice Admin approves a claim if enough reports are submitted
+     * @param _eventCode Weather event code (e.g. drought/flood)
+     * @param fromTime Start of timeframe (UNIX timestamp)
+     * @param toTime End of timeframe (UNIX timestamp)
+     * @param threshold Minimum number of reports required
+     */
+    function approveClaim(
+        uint8 _eventCode,
+        uint256 fromTime,
+        uint256 toTime,
+        uint256 threshold
+    ) public onlyAdmin {
+        uint256 count = 0;
+
+        // Count how many reports match this event within timeframe
+        for (uint256 i = 0; i < reports.length; i++) {
+            if (
+                reports[i].eventCode == _eventCode &&
+                reports[i].timestamp >= fromTime &&
+                reports[i].timestamp <= toTime
+            ) {
+                count++;
+            }
+        }
+
+        require(count >= threshold, "Not enough reports to approve claim");
+
+        emit ClaimApproved(_eventCode, count);
+    }
+
+    // ============================================================
+    // ====================== STEP 4 ==============================
+    // Claim Redemption
+    // ============================================================
+
+    mapping(uint256 => bool) public hasClaimed;
+
+    event ClaimRedeemed(uint256 farmerID, uint256 amount);
+
+    /**
+     * @notice Farmer redeems insurance claim payout
+     * @dev For simplicity, payout is a fixed 0.1 ether (can be modified)
+     * @param farmerID The ID of the farmer claiming
+     */
+    function redeemClaim(uint256 farmerID) public {
+        require(farmers[farmerID].isRegistered, "Farmer not registered");
+        require(!hasClaimed[farmerID], "Already claimed");
+
+        hasClaimed[farmerID] = true;
+
+        uint256 payoutAmount = 0.1 ether; // fixed payout for example
+        require(address(this).balance >= payoutAmount, "Contract has no funds");
+
+        // Transfer payout to farmer
+        payable(farmers[farmerID].farmerAddress).transfer(payoutAmount);
+
+        emit ClaimRedeemed(farmerID, payoutAmount);
+    }
+
+    // ============================================================
+    // ====================== UTILITIES ===========================
+    // ============================================================
+
+    /**
+     * @notice Allow contract to receive ether (funding insurance pool)
+     */
+    receive() external payable {}
+}

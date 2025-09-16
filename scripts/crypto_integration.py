@@ -3,6 +3,9 @@ import pandas as pd
 from hashlib import sha256
 from ecdsa import SigningKey, SECP256k1
 
+from web3 import Web3
+import json
+
 # Load the reports from the CSV file created in the last step
 df = pd.read_csv('../simulated_reports.csv')
 
