@@ -66,27 +66,58 @@ contract CropInsurance {
 
     event ReportSubmitted(uint256 farmerID, uint8 eventCode, uint256 timestamp);
 
+   
+    function verifySignature(
+        bytes32 messageHash,
+        bytes memory signature,
+        address signer
+    ) public pure returns(bool) {
+        return ecrecover(
+            messageHash,
+            uint8(signature[64]),
+            bytes32(signature[:32]),
+            bytes32(signature[32:64])
+        ) == signer;
+    }
     /**
-     * @notice Farmer submits a weather event report
-     * @param _farmerID Farmer’s ID
-     * @param _eventCode Weather event code
-     * @param _signature Off-chain signature proving authenticity
-     */
+ * @notice Farmer submits a weather event report
+ * @param _farmerID Farmer’s ID
+ * @param _eventCode Weather event code
+ * @param _timestamp Timestamp of the report
+ * @param _signature Off-chain signature proving authenticity
+ * @param _reportHash The hash of the report data
+ * @param _signer The address of the farmer who signed the report
+ */
     function submitReport(
         uint256 _farmerID,
         uint8 _eventCode,
-        bytes memory _signature
+        uint256 _timestamp,
+        bytes memory _signature,
+        bytes32 _reportHash,
+        address _signer
     ) public {
+        // 1. Ensure the farmer is registered
         require(farmers[_farmerID].isRegistered, "Farmer not registered");
 
-        // Store the report
-        reports.push(
-            Report(_farmerID, _eventCode, block.timestamp, _signature)
+        // 2. CRYPTOGRAPHIC VERIFICATION: Use the hash to verify the signature
+        // The transaction will fail if the signature is invalid
+        require(
+            verifySignature(_reportHash, _signature, _signer),
+            "Invalid signature"
         );
 
-        emit ReportSubmitted(_farmerID, _eventCode, block.timestamp);
-    }
+        // 3. Store the report only after successful verification
+        reports.push(
+            Report(
+                _farmerID,
+                _eventCode,
+                _timestamp,
+                _signature
+            )
+        );
 
+        emit ReportSubmitted(_farmerID, _eventCode, _timestamp);
+    }
     // ============================================================
     // ====================== STEP 3 ==============================
     // Threshold-Based Claim Approval
